@@ -56,14 +56,14 @@ def ParseUsr(line):
 def ParseIP(line):
     ip = re.search(r'(\bfrom\s)(\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b)', line)
     if ip is not None:
-        return ip.group(2)
+        return ip[2]
 
 
 # parse a date from the line
 def ParseDate(line):
     date = re.search(r'^[A-Za-z]{3}\s*[0-9]{1,2}\s[0-9]{1,2}:[0-9]{2}:[0-9]{2}', line)
     if date is not None:
-        return date.group(0)
+        return date[0]
 
 
 # parse a command from a line
@@ -71,7 +71,7 @@ def ParseCmd(line):
     # parse command to end of line
     cmd = re.search(r'(\bCOMMAND=)(.+?$)', line)
     if cmd is not None:
-        return cmd.group(2)
+        return cmd[2]
 
 
 # begin parsing the passed LOG
@@ -107,7 +107,6 @@ def ParseLogs(log):
             logs[usr].succ_logs.append(line.rstrip('\n'))
             logs[usr].logs.append(line.rstrip('\n'))
 
-        # match a failed login
         elif "Failed password for" in line:
             # parse user
             usr = ParseUsr(line)
@@ -122,13 +121,12 @@ def ParseLogs(log):
             logs[usr].fail_logs.append(line.rstrip('\n'))
             logs[usr].logs.append(line.rstrip('\n'))
 
-        # match failed auth
         elif ":auth): authentication failure;" in line:
             # so there are three flavors of authfail we care about;
             # su, sudo, and ssh.  Lets parse each.
             usr = re.search(r'(\blogname=)(\w+)', line)
             if usr is not None:
-                usr = usr.group(2)
+                usr = usr[2]
             # parse a fail log to ssh
             if "(sshd:auth)" in line:
                 # ssh doesn't have a logname hurr
@@ -136,13 +134,10 @@ def ParseLogs(log):
                 if usr not in logs:
                     logs[usr] = Log(usr)
                 logs[usr].ips.append(ParseIP(line))
-            # parse sudo/su fails
-            else:
-                if usr not in logs:
-                    logs[usr] = Log(usr)
+            elif usr not in logs:
+                logs[usr] = Log(usr)
             logs[usr].fail_logs.append(line.rstrip('\n'))
             logs[usr].logs.append(line.rstrip('\n'))
-        # match commands
         elif "sudo:" in line:
             # parse user
             usr = ParseUsr(line)
@@ -151,8 +146,7 @@ def ParseLogs(log):
 
             cmd = ParseCmd(line)
             # append the command if it isn't there already
-            if cmd is not None:
-                if cmd not in logs[usr].commands:
-                    logs[usr].commands.append(cmd)
+            if cmd is not None and cmd not in logs[usr].commands:
+                logs[usr].commands.append(cmd)
             logs[usr].logs.append(line.rstrip('\n'))
     return logs
